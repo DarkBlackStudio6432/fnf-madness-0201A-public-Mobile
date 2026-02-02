@@ -17,15 +17,18 @@ jobs:
       OPENFL_VERSION: "9.2.2"
 
     steps:
+      # 1️⃣ Clonar o repositório
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      # 2️⃣ Instalar JDK 8 (necessário para Android build)
       - name: Setup JDK 8
         uses: actions/setup-java@v3
         with:
           java-version: '8'
           distribution: 'temurin'
 
+      # 3️⃣ Instalar Haxe
       - name: Install Haxe
         run: |
           sudo add-apt-repository ppa:haxe/releases -y
@@ -35,33 +38,45 @@ jobs:
       - name: Verify Haxe
         run: haxe --version
 
+      # 4️⃣ Configurar Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 33
           build-tools: "33.0.2"
 
+      # 5️⃣ Instalar dependências Haxelib (sem SScript)
       - name: Install Haxelib dependencies
         run: |
+          # LuaJIT
           haxelib git linc_luajit https://github.com/superpowers04/linc_luajit
+          # JSON
           haxelib install tjson
+          # Flixel
           haxelib install flixel
           haxelib install flixel-addons
           haxelib install flixel-ui
+          # HXCPP
           haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
+          # hxvlc
           haxelib git hxvlc https://github.com/majigsaw77/hxvlc
-          haxelib install SScript 8.1.6
+          # FlxAnimate
           haxelib install flxanimate
+          # Lime + OpenFL
           haxelib install lime
           haxelib install openfl
+          # Discord (opcional)
           haxelib install hxdiscord_rpc https://github.com/MAJigsaw77/hxdiscord_rpc
-          
+
+      # 6️⃣ Testar build no Windows (opcional)
       - name: Test build on Windows (optional)
         run: lime test windows -debug
 
+      # 7️⃣ Build do APK final
       - name: Build APK
         run: lime build android -final -verbose
 
+      # 8️⃣ Fazer upload do APK gerado
       - name: Upload APK artifact
         uses: actions/upload-artifact@v3
         with:
