@@ -32,7 +32,7 @@ import states.editors.CharacterEditorState;
 import substates.PauseSubState;
 import substates.GameOverSubstate;
 
-#if !flash
+#if (!flash && !mobile)
 import flixel.addons.display.FlxRuntimeShader;
 import openfl.filters.ShaderFilter;
 #end
@@ -43,12 +43,9 @@ import states.stages.objects.*;
 
 #if LUA_ALLOWED
 import psychlua.*;
-#else
-import psychlua.LuaUtils;
-import psychlua.HScript;
 #end
 
-#if SScript
+#if (SScript && !mobile)
 import tea.SScript;
 #end
 
