@@ -1,104 +1,69 @@
-name: Build FNF Madness Android Supreme
+name: Build Madness Engine Android
 
 on:
   push:
-    branches: [ main, release ]
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
+
     env:
-      HAXE_STD_PATH: ${{ github.workspace }}/haxe_std
+      HAXE_VERSION: "4.4.0"
+      LIME_VERSION: "7.9.1"
+      OPENFL_VERSION: "9.2.2"
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Cache Haxelibs
-        uses: actions/cache@v3
+      - name: Setup JDK 8
+        uses: actions/setup-java@v3
         with:
-          path: ~/.haxelib
-          key: ${{ runner.os }}-haxelibs-${{ hashFiles('**/haxelib.json') }}
-          restore-keys: |
-            ${{ runner.os }}-haxelibs-
+          java-version: '8'
+          distribution: 'temurin'
 
-      - name: Setup Haxe
-        uses: haxe/setup-haxe@v2
-        with:
-          haxe-version: '4.2.5'
-          haxelib: true
-
-      - name: Install Haxelibs
+      - name: Install Haxe
         run: |
-          haxelib install lime || true
-          haxelib install openfl || true
-          haxelib install flixel || true
-          haxelib install flixel-addons || true
-          haxelib install flixel-ui || true
-          haxelib install flxanimate || true
-          haxelib install tjson || true
-          haxelib install hxcpp || true
-          haxelib git hxdiscord_rpc https://github.com/MAJigsaw77/hxdiscord_rpc || true
-          haxelib git linc_luajit https://github.com/superpowers04/linc_luajit || true
-          haxelib install SScript 8.1.6 || true
-          haxelib upgrade || true
+          sudo add-apt-repository ppa:haxe/releases -y
+          sudo apt update
+          sudo apt install -y haxe
 
-      - name: Setup Android SDK & NDK
+      - name: Verify Haxe
+        run: haxe --version
+
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 33
-          build-tools: 33.0.2
-          ndk: 25.2.9519653
-          cmake: 3.22.1
+          build-tools: "33.0.2"
 
-      - name: Determine build type
-        id: build_type
+      - name: Install Haxelib dependencies
         run: |
-          if [[ "${GITHUB_REF##*/}" == "release" ]]; then
-            echo "BUILD_TYPE=release" >> $GITHUB_ENV
-          else
-            echo "BUILD_TYPE=debug" >> $GITHUB_ENV
-          fi
+          haxelib git linc_luajit https://github.com/superpowers04/linc_luajit
+          haxelib install tjson
+          haxelib install flixel
+          haxelib install flixel-addons
+          haxelib install flixel-ui
+          haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
+          haxelib git hxvlc https://github.com/majigsaw77/hxvlc
+          haxelib install SScript 8.1.6
+          haxelib install flxanimate
+          haxelib install lime
+          haxelib install openfl
+          haxelib install hxdiscord_rpc https://github.com/MAJigsaw77/hxdiscord_rpc
+          
+      - name: Test build on Windows (optional)
+        run: lime test windows -debug
 
-      - name: Compile Haxe Multi-Arch
-        run: |
-          echo "=== Compiling Haxe for ARMv7 and ARM64 ==="
-          export HXCPP_ARMV7=1
-          export HXCPP_ARM64=1
-          haxe build.hxml -D android -D HXCPP_ARMV7 -D HXCPP_ARM64 -D android -verbose
+      - name: Build APK
+        run: lime build android -final -verbose
 
-      - name: OpenFL Build (Android Supreme)
-        run: |
-          echo "=== Starting OpenFL Build ==="
-          openfl build android -${{ env.BUILD_TYPE }} -final -verbose -D HXCPP_ARMV7 -D HXCPP_ARM64 -D android
-          echo "=== Build Finished ==="
-
-      - name: Optimize APK (Proguard / Minify)
-        run: |
-          echo "=== Running Proguard / Shrinking APK ==="
-          # OpenFL já inclui minify/obfuscate se -final usado
-          # Podemos adicionar script customizado se quiser mais compressão
-
-      - name: Run APK Analyzer (optional)
-        run: |
-          echo "=== APK Info ==="
-          if [ -f export/android/bin/MADNESS-${{ env.BUILD_TYPE }}.apk ]; then
-            zipinfo export/android/bin/MADNESS-${{ env.BUILD_TYPE }}.apk
-          fi
-
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v3
         with:
-          name: Madness-Android-APK
-          path: |
-            export/android/bin/MADNESS-${{ env.BUILD_TYPE }}.apk
-
-      - name: Log Haxe + OpenFL Versions
-        run: |
-          echo "=== Haxe Version ==="
-          haxe --version
-          echo "=== OpenFL Version ==="
-          openfl --version
-          echo "=== Lime Version ==="
-          lime --version
+          name: madness-apk
+          path: export/android/bin/MADNESS-release.apk
